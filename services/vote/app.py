@@ -134,7 +134,8 @@ def cast_vote():
         }), 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to cast vote', 'details': str(e)}), 500
+        app.logger.error(f"Failed to cast vote: {str(e)}")
+        return jsonify({'error': 'Failed to cast vote'}), 500
 
 
 @app.route('/vote/anonymous', methods=['POST'])
@@ -188,7 +189,8 @@ def cast_anonymous_vote():
         }), 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to cast vote', 'details': str(e)}), 500
+        app.logger.error(f"Failed to cast anonymous vote: {str(e)}")
+        return jsonify({'error': 'Failed to cast vote'}), 500
 
 
 @app.route('/vote/check/<int:poll_id>', methods=['GET'])
@@ -236,4 +238,6 @@ def get_user_votes():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    import os
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)

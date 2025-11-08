@@ -81,7 +81,8 @@ def forward_request(service_url, path, method='GET', json_data=None, headers=Non
     except requests.exceptions.ConnectionError:
         return jsonify({'error': 'Service unavailable'}), 503
     except Exception as e:
-        return jsonify({'error': 'Internal gateway error', 'details': str(e)}), 500
+        app.logger.error(f"Gateway error: {str(e)}")
+        return jsonify({'error': 'Internal gateway error'}), 500
 
 
 @app.route('/', methods=['GET'])
@@ -247,4 +248,6 @@ def trending():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    import os
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=8080, debug=debug_mode)

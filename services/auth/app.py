@@ -107,7 +107,8 @@ def register():
         }), 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Registration failed', 'details': str(e)}), 500
+        app.logger.error(f"Registration failed: {str(e)}")
+        return jsonify({'error': 'Registration failed'}), 500
 
 
 @app.route('/login', methods=['POST'])
@@ -169,4 +170,6 @@ def verify_token():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    import os
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)

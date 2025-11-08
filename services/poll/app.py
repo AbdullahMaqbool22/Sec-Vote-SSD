@@ -128,7 +128,8 @@ def create_poll():
         }), 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to create poll', 'details': str(e)}), 500
+        app.logger.error(f"Failed to create poll: {str(e)}")
+        return jsonify({'error': 'Failed to create poll'}), 500
 
 
 @app.route('/polls', methods=['GET'])
@@ -202,7 +203,8 @@ def delete_poll(poll_id):
         return jsonify({'message': 'Poll deleted successfully'}), 200
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to delete poll', 'details': str(e)}), 500
+        app.logger.error(f"Failed to delete poll: {str(e)}")
+        return jsonify({'error': 'Failed to delete poll'}), 500
 
 
 @app.route('/polls/<int:poll_id>/close', methods=['POST'])
@@ -224,8 +226,11 @@ def close_poll(poll_id):
         return jsonify({'message': 'Poll closed successfully'}), 200
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to close poll', 'details': str(e)}), 500
+        app.logger.error(f"Failed to close poll: {str(e)}")
+        return jsonify({'error': 'Failed to close poll'}), 500
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    import os
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)
