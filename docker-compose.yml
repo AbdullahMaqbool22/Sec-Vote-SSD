@@ -1,0 +1,137 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: secvote-postgres
+    environment:
+      POSTGRES_USER: secvote
+      POSTGRES_PASSWORD: secvote_pass
+      POSTGRES_DB: secvote_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - secvote-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: secvote-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - secvote-network
+
+  # Authentication Service
+  auth-service:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    container_name: secvote-auth
+    environment:
+      - DATABASE_URL=postgresql://secvote:secvote_pass@postgres:5432/secvote_db
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET_KEY=your-secret-key-change-in-production
+      - FLASK_ENV=production
+      - FLASK_DEBUG=False
+    ports:
+      - "5001:5000"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - secvote-network
+
+  # Poll Service
+  poll-service:
+    build:
+      context: ./services/poll
+      dockerfile: Dockerfile
+    container_name: secvote-poll
+    environment:
+      - DATABASE_URL=postgresql://secvote:secvote_pass@postgres:5432/secvote_db
+      - REDIS_URL=redis://redis:6379/1
+      - JWT_SECRET_KEY=your-secret-key-change-in-production
+      - AUTH_SERVICE_URL=http://auth-service:5000
+    ports:
+      - "5002:5000"
+    depends_on:
+      - postgres
+      - redis
+      - auth-service
+    networks:
+      - secvote-network
+
+  # Vote Service
+  vote-service:
+    build:
+      context: ./services/vote
+      dockerfile: Dockerfile
+    container_name: secvote-vote
+    environment:
+      - DATABASE_URL=postgresql://secvote:secvote_pass@postgres:5432/secvote_db
+      - REDIS_URL=redis://redis:6379/2
+      - JWT_SECRET_KEY=your-secret-key-change-in-production
+      - AUTH_SERVICE_URL=http://auth-service:5000
+      - POLL_SERVICE_URL=http://poll-service:5000
+    ports:
+      - "5003:5000"
+    depends_on:
+      - postgres
+      - redis
+      - auth-service
+      - poll-service
+    networks:
+      - secvote-network
+
+  # Results Service
+  results-service:
+    build:
+      context: ./services/results
+      dockerfile: Dockerfile
+    container_name: secvote-results
+    environment:
+      - DATABASE_URL=postgresql://secvote:secvote_pass@postgres:5432/secvote_db
+      - REDIS_URL=redis://redis:6379/3
+      - JWT_SECRET_KEY=your-secret-key-change-in-production
+      - AUTH_SERVICE_URL=http://auth-service:5000
+    ports:
+      - "5004:5000"
+    depends_on:
+      - postgres
+      - redis
+      - auth-service
+    networks:
+      - secvote-network
+
+  # API Gateway
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: secvote-gateway
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:5000
+      - POLL_SERVICE_URL=http://poll-service:5000
+      - VOTE_SERVICE_URL=http://vote-service:5000
+      - RESULTS_SERVICE_URL=http://results-service:5000
+      - JWT_SECRET_KEY=your-secret-key-change-in-production
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-service
+      - poll-service
+      - vote-service
+      - results-service
+    networks:
+      - secvote-network
+
+networks:
+  secvote-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
